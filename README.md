@@ -6,6 +6,12 @@
 No cloud. No accounts. No data leaves your machine. Just SQLite,
 JSON, and three HTML pages that open in any browser.
 
+## Have a glance!
+
+public entrance for template
+- browse by theme： https://lilibetti.github.io/chat-card-organizer/browse.html
+- collections： https://lilibetti.github.io/chat-card-organizer/collections.html
+- full conversation flow： https://lilibetti.github.io/chat-card-organizer/conversation.html
 
 ## What it does
 
