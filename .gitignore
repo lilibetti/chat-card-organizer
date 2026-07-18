@@ -5,10 +5,11 @@
 *.sqlite3
 
 # --- Generated / personal data ---
-# 02-cards.json and 04-labeled.json contain your real conversations.
-# Keep these out of the repo; regenerate locally with the pipeline.
-02-cards.json
-04-labeled.json
+# `02-cards.json` and `04-labeled.json` are sample/demo files in the repo
+# so a fresh clone can be served with `python 05-serve.py` immediately.
+# When you generate real data locally and want to commit updated samples,
+# review the diff carefully first — do NOT commit private conversations.
+# Intermediate batch files from `03-label.py` are never tracked.
 03-batch-*.json
 
 # --- Backups / archives ---
