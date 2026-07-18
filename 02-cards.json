@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "source_db": "your-chat.db",
+    "n_messages": 11,
+    "n_cards": 5,
+    "n_orphan_assistants": 1,
+    "n_skipped_incomplete": 0,
+    "date_range": ["2025-01-15T08:30:00.000Z", "2025-01-15T18:00:00.000Z"],
+    "extracted_at": "2025-01-15T18:30:00",
+    "note": "Sample data — replace with your real cards. The shape is the same as 00-data-template.json."
+  },
+  "cards": [
+    {
+      "id": "prompt_1736931600001_aaaa1",
+      "ts": "2025-01-15T09:00:00.000Z",
+      "user": "I keep getting a TypeError when I call this function. Here's the code: function fetchUser(id) { return data.users.find(u => u.id === id).name; }. What am I missing?",
+      "assistant": "The error means `find` returned `undefined`, and you're trying to read `.name` on it. Either the user with that id doesn't exist, or your comparison is off (string vs number, case sensitivity, etc.). Two safe patterns:\n\n```js\n// 1. Optional chaining — returns undefined instead of throwing\nreturn data.users.find(u => u.id === id)?.name;\n\n// 2. Explicit check\nconst user = data.users.find(u => u.id === id);\nif (!user) return null;\nreturn user.name;\n```\n\nIf you actually want the function to throw when the user is missing, the right place is an explicit guard, not a silent crash on `.name`."
+    },
+    {
+      "id": "prompt_1736942400002_bbbb2",
+      "ts": "2025-01-15T12:00:00.000Z",
+      "user": "Why do I always procrastinate on the things that matter most to me?",
+      "assistant": "There's a well-known pattern here: the more something matters, the more emotional weight it carries, and the more your brain treats the task itself as a threat. Procrastination, in that reading, isn't laziness — it's your nervous system trying to protect you from the discomfort of caring.\n\nA few things that sometimes help:\n\n- Make the first step embarrassingly small. \"Open the file\" instead of \"write the section.\"\n- Decide *when*, not *if*. The decision is where the friction lives; the doing is usually fine once you've started.\n- Notice the story you tell about the task. If the story is \"this will determine my whole future,\" of course you avoid it. The story is the problem, not the work.\n\nNone of this is a quick fix. But the pattern is not a character flaw — it's a feature of how attention works under threat."
+    },
+    {
+      "id": "prompt_1736953200003_cccc3",
+      "ts": "2025-01-15T15:00:00.000Z",
+      "user": "Help me draft a short story opening. I want the first line to feel like a door opening.",
+      "assistant": "Try this: *The envelope was addressed to a person who had died three years before she was born.*\n\nIt opens a door because it raises three questions in nine words — who sent it, who died, who is the *she* — and the reader can't not step through. Compare it to a more conventional opening like *Sarah woke up to the sound of rain* — that's a window, but the room is empty and there's nothing to walk toward.\n\nA few principles for an opening that pulls:\n\n1. **Contradiction or impossibility in the first line.** Something that *can't* be true, or that the reader knows can't be true yet. The brain snags on it.\n2. **A question the reader can answer for themselves, but only by reading on.** Not a literal question — a *gap* between what's said and what it implies.\n3. **One concrete image, not three.** One envelope, not envelopes, keys, and a hallway.\n\nDraft three or four openings. The right one usually announces itself within a sentence of being read aloud."
+    },
+    {
+      "id": "prompt_1736960400004_dddd4",
+      "ts": "2025-01-15T17:00:00.000Z",
+      "user": "I've been using you for six months. What do you think I've been working on?",
+      "assistant": "Based on the recent shape of our conversations, you've been splitting time between three things: a long-running personal project that involves writing and structure, some exploratory reading in adjacent fields, and a slower-moving question about direction — what to commit to next, and what to let go of.\n\nThe first two are visible in what you actually ask about — structure, naming, narrative, sources. The third shows up more in *how* you ask, and in the questions that come late at night: not \"how do I do X\" but \"should I.\"\n\nA caveat: I can only see what you've chosen to bring me. The six months behind our conversations are larger than the conversations themselves. If my read is off, the most useful next question is which part you'd push back on."
+    },
+    {
+      "id": "prompt_1736964000005_eeee5",
+      "ts": "2025-01-15T18:00:00.000Z",
+      "user": "Draft a polite but firm email declining a meeting that doesn't need to happen.",
+      "assistant": "Here's a version that respects everyone's time:\n\n---\n\nSubject: Re: [topic] — let's handle this in writing\n\nHi [name],\n\nThanks for the invite. I think this one will work better async — there's a specific question behind it, and the answer will be clearer in text than in a 30-minute slot. If you can send the question (or a short note on what you need from me), I'll reply by [day].\n\nIf it turns out we genuinely do need to talk it through, easy to find time later.\n\n[you]\n\n---\n\nTwo things to notice in the structure: it gives a *reason* (the question is the right unit of work), not a *feeling* (\"I'm too busy\"), and it offers a way back in (\"if it turns out we need to\") so the other person doesn't feel shut out. The firmness is in the framing, not the tone."
+    }
+  ],
+  "orphan_assistants": [
+    {
+      "id": 42,
+      "ts": "2025-01-15T08:30:00.000Z",
+      "content": "An assistant message without a matching user — this happens when a user message was deleted, failed to save, or was sent through a path that didn't write to the messages table. Orphan assistants are surfaced separately in the conversation view; they are not part of any card."
+    }
+  ],
+  "skipped_incomplete": []
+}

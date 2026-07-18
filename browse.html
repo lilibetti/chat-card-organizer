@@ -1,0 +1,634 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>按主题浏览</title>
+<style>
+  :root { --bg:#fafaf8; --ink:#1a1a1a; --muted:#888; --line:#e6e3dd; --acc:#c8472a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft Yahei",sans-serif; color:var(--ink); background:var(--bg); }
+  header { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); padding:14px 20px; display:flex; align-items:center; gap:18px; z-index:10; }
+  header h1 { font-size:14px; font-weight:400; margin:0; letter-spacing:1px; }
+  .top-spacer { flex:1; }
+  .top-stat { color:var(--muted); font-size:12px; padding:4px 10px; }
+  .top-stat b { color:var(--ink); font-weight:500; }
+  a.btn { display:inline-block; padding:6px 14px; border:1px solid var(--ink); text-decoration:none; color:var(--ink); font-size:12px; }
+  a.btn:hover { background:var(--ink); color:var(--bg); }
+  button.btn { padding:5px 12px; border:1px solid var(--ink); text-decoration:none; color:var(--ink); font-size:12px; background:var(--bg); font-family:inherit; cursor:pointer; }
+  button.btn:hover { background:var(--ink); color:var(--bg); }
+
+  .layout { display:grid; grid-template-columns:300px 1fr; min-height:calc(100vh - 50px); }
+  aside { border-right:1px solid var(--line); padding:16px 14px; overflow-y:auto; max-height:calc(100vh - 50px); position:sticky; top:50px; }
+  aside h2 { font-size:12px; font-weight:500; color:var(--muted); margin:0 0 10px; text-transform:uppercase; letter-spacing:1px; }
+  .bucket { margin-bottom:10px; }
+  .bucket-head { display:flex; align-items:center; gap:6px; cursor:pointer; padding:5px 0; user-select:none; }
+  .bucket-head .caret { display:inline-block; width:10px; color:var(--muted); transition:transform .15s; }
+  .bucket.open .bucket-head .caret { transform:rotate(90deg); }
+  .bucket-name { font-weight:500; font-size:13px; }
+  .bucket-count { color:var(--muted); font-size:11px; margin-left:auto; }
+  .bucket-body { display:none; padding-left:18px; }
+  .bucket.open .bucket-body { display:block; }
+  .sub { display:flex; align-items:center; gap:6px; padding:3px 0; cursor:pointer; font-size:12px; color:#444; }
+  .sub:hover { color:var(--acc); }
+  .sub.active { color:var(--acc); font-weight:500; }
+  .sub .count { color:var(--muted); font-size:10px; margin-left:auto; }
+  .sub.has-no { color:#999; }
+  .no-cat { font-size:12px; color:#888; padding:3px 0; cursor:pointer; }
+  .no-cat.active { color:var(--acc); font-weight:500; }
+
+  main { padding:24px 28px; }
+  .filter-bar { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .filter-bar .filter-label { color:var(--muted); font-size:12px; }
+  .filter-bar .filter-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .filter-bar .filter-tag { padding:2px 8px; border:1px solid var(--line); font-size:11px; cursor:pointer; user-select:none; }
+  .filter-bar .filter-tag.on { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+
+  .card { background:#fff; border:1px solid var(--line); padding:18px 20px; margin-bottom:14px; position:relative; }
+  .card.selected { border-color:var(--acc); box-shadow:0 0 0 2px rgba(200,71,42,0.08); }
+  .card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .card-check { width:16px; height:16px; cursor:pointer; }
+  .card-time { font-size:11px; color:var(--muted); font-family:monospace; }
+  .card-id { font-size:10px; color:#ccc; font-family:monospace; }
+  .card-actions { margin-left:auto; display:flex; gap:6px; }
+  .card-collapse { background:none; border:1px solid var(--line); padding:2px 8px; font-size:11px; cursor:pointer; color:var(--muted); }
+  .card-collapse:hover { color:var(--ink); }
+
+  .bubble { display:flex; gap:10px; margin-bottom:12px; }
+  .bubble .role { font-size:10px; color:var(--muted); text-transform:uppercase; min-width:50px; padding-top:3px; letter-spacing:1px; }
+  .bubble.user .role { color:var(--acc); }
+  .bubble .text { flex:1; white-space:pre-wrap; word-wrap:break-word; line-height:1.7; }
+
+  .card-tags { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding-top:10px; border-top:1px solid var(--line); margin-top:6px; font-size:11px; }
+  .tag-label { color:var(--muted); margin-right:4px; }
+  .tag { padding:2px 8px; border:1px solid var(--line); cursor:pointer; user-select:none; color:#555; }
+  .tag.on { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .tag:hover { border-color:var(--ink); }
+  .tag-static { padding:2px 8px; border:1px solid var(--line); cursor:pointer; user-select:none; color:#777; background:#f5f3ee; }
+  .tag-static:hover { color:var(--acc); border-color:var(--acc); }
+
+  .empty { color:var(--muted); padding:60px 0; text-align:center; font-size:13px; }
+  .footer { color:var(--muted); font-size:11px; text-align:center; padding:30px 0 20px; }
+  .badge-counter { background:var(--ink); color:var(--bg); font-size:10px; padding:1px 5px; border-radius:8px; margin-left:4px; }
+
+  /* 折叠卡片时只显示 user 第一行 */
+  .card.collapsed .bubble { display:none; }
+  .card.collapsed .bubble.user { display:flex; }
+  .card.collapsed .bubble .text { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card.collapsed .card-tags { display:none; }
+
+  /* Modal */
+  .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,0.3); z-index:100; display:flex; align-items:center; justify-content:center; }
+  .modal { background:var(--bg); border:1px solid var(--ink); width:520px; max-width:90vw; max-height:80vh; display:flex; flex-direction:column; }
+  .modal-head { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; }
+  .modal-head h3 { margin:0; font-size:14px; font-weight:500; flex:1; }
+  .modal-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted); padding:0 4px; }
+  .modal-close:hover { color:var(--ink); }
+  .modal-body { padding:16px 18px; overflow-y:auto; flex:1; }
+  .modal-section { margin-bottom:18px; }
+  .modal-section h4 { font-size:11px; color:var(--muted); margin:0 0 8px; text-transform:uppercase; letter-spacing:1px; font-weight:500; }
+  .new-coll-row { display:flex; gap:6px; }
+  .new-coll-row input { flex:1; padding:6px 10px; border:1px solid var(--ink); background:var(--bg); font:inherit; color:var(--ink); }
+  .new-coll-row button { padding:6px 12px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; cursor:pointer; }
+  .new-coll-row button:hover { background:#000; }
+  .coll-list { display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto; }
+  .coll-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border:1px solid var(--line); cursor:pointer; }
+  .coll-item:hover { border-color:var(--ink); }
+  .coll-item.on { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .coll-item .coll-title { flex:1; font-size:13px; }
+  .coll-item .coll-n { font-size:11px; color:var(--muted); }
+  .coll-item.on .coll-n { color:#aaa; }
+  .modal-foot { padding:12px 18px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+  .modal-foot .info { flex:1; font-size:12px; color:var(--muted); }
+  .btn-primary { padding:6px 14px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; cursor:pointer; }
+  .btn-primary:hover { background:#000; }
+  .btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+
+  /* Toast */
+  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 20px; font-size:13px; z-index:200; opacity:0; transition:opacity .2s; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>按主题浏览 <span id="totalCount" class="badge-counter">0</span></h1>
+  <div class="top-spacer"></div>
+  <div class="top-stat">已选中 <b id="selCount">0</b></div>
+  <button class="btn" id="addToCollBtn" style="display:none;cursor:pointer;background:var(--bg);">+ 加入 collection</button>
+  <a class="btn" href="collections.html" id="collBtn">collection</a>
+</header>
+
+<div class="layout">
+  <aside id="sidebar">
+    <h2>主题分类</h2>
+    <div id="bucketList"></div>
+  </aside>
+
+  <main>
+    <div class="filter-bar">
+      <span class="filter-label">筛选：</span>
+      <div class="filter-tags" id="filterBar"></div>
+    </div>
+    <div id="cardList"></div>
+    <div class="footer" id="foot"></div>
+  </main>
+</div>
+
+<script>
+const BUCKETS = {
+  'A — People':     ['1', '2'],
+  'B — Body':       ['3'],
+  'C — Work':       ['4', '5', '6', '7'],
+  'D — Learning':   ['8', '9', '10', '11', '12'],
+  'E — Self':       ['13', '14', '15'],
+  'F — Life':       ['16'],
+};
+const FLAT_LABELS = Object.values(BUCKETS).flat();
+const NO_LABEL = 'uncategorized';
+
+// 状态
+let CARDS = [];
+let ORPHANS = [];
+let LABELS = {};   // id -> [labels]  从 localStorage + JSON 合并
+let SELECTS = {};  // id -> true
+let COLL_MEM = {}; // id -> [collection ids]
+let activeCat = NO_LABEL;  // 当前选中的分类
+let activeFilters = new Set();  // 额外筛选的标签（交集）
+
+const STORAGE_LABELS = 'chat-card-labels';
+const STORAGE_SELECTS = 'chat-card-selects';
+
+// 决定本次加载时 SELECTS 的初始值：
+// - 新 tab / 新会话：清零（用 sessionStorage 做 tab 标记，关闭 tab 后该标记消失）
+// - 同 tab 内刷新：清零（用 Performance API 的 navigation.type 区分）
+// - 同 tab 内从另一页面导航过来：保留（实现两个页面共享一份勾选）
+function _initSelects() {
+  const SESSION_KEY = 'chat-tab-session';
+  const isNewTab = !sessionStorage.getItem(SESSION_KEY);
+  if (isNewTab) {
+    sessionStorage.setItem(SESSION_KEY, '1');
+    localStorage.removeItem(STORAGE_SELECTS);
+    return {};
+  }
+  const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0])
+            || (performance.navigation ? { type: performance.navigation.type === 1 ? 'reload' : 'navigate' } : null);
+  const isReload = nav && nav.type === 'reload';
+  if (isReload) {
+    localStorage.removeItem(STORAGE_SELECTS);
+    return {};
+  }
+  try { return JSON.parse(localStorage.getItem(STORAGE_SELECTS) || '{}'); }
+  catch { return {}; }
+}
+function loadStorage() {
+  try { LABELS = JSON.parse(localStorage.getItem(STORAGE_LABELS) || '{}'); } catch { LABELS = {}; }
+  SELECTS = _initSelects();
+}
+function saveLabels() { localStorage.setItem(STORAGE_LABELS, JSON.stringify(LABELS)); }
+function saveSelects() { localStorage.setItem(STORAGE_SELECTS, JSON.stringify(SELECTS)); }
+
+function cardBucket(c) {
+  const ls = LABELS[c.id] || [];
+  const bs = new Set();
+  for (const l of ls) {
+    for (const [bn, ls2] of Object.entries(BUCKETS)) {
+      if (ls2.includes(l)) bs.add(bn);
+    }
+  }
+  return [...bs];
+}
+function allCategories(c) {
+  const ls = LABELS[c.id] || [];
+  return ls.length ? ls : [NO_LABEL];
+}
+
+function renderSidebar() {
+  const sl = document.getElementById('bucketList');
+  sl.innerHTML = '';
+  // 大筐
+  for (const [bn, subs] of Object.entries(BUCKETS)) {
+    const div = document.createElement('div');
+    div.className = 'bucket';
+    if (activeCat === bn || subs.includes(activeCat)) div.classList.add('open');
+    let cnt = 0;
+    for (const c of CARDS) if ((cardBucket(c)).includes(bn)) cnt++;
+    const head = document.createElement('div');
+    head.className = 'bucket-head';
+    head.innerHTML = `<span class="caret">▸</span><span class="bucket-name">${bn}</span><span class="bucket-count">${cnt}</span>`;
+    head.onclick = () => { div.classList.toggle('open'); };
+    div.appendChild(head);
+    const body = document.createElement('div');
+    body.className = 'bucket-body';
+    for (const s of subs) {
+      let sCnt = 0;
+      for (const c of CARDS) if ((LABELS[c.id] || []).includes(s)) sCnt++;
+      const sub = document.createElement('div');
+      sub.className = 'sub' + (activeCat === s ? ' active' : '') + (sCnt === 0 ? ' has-no' : '');
+      sub.innerHTML = `${s} <span class="count">${sCnt}</span>`;
+      sub.onclick = () => { activeCat = s; renderAll(); };
+      body.appendChild(sub);
+    }
+    div.appendChild(body);
+    sl.appendChild(div);
+  }
+  // uncategorized
+  let noCnt = 0;
+  for (const c of CARDS) if (!(LABELS[c.id] || []).length) noCnt++;
+  const noDiv = document.createElement('div');
+  noDiv.className = 'no-cat' + (activeCat === NO_LABEL ? ' active' : '');
+  noDiv.innerHTML = `uncategorized <span style="color:var(--muted);font-size:10px;margin-left:6px">${noCnt}</span>`;
+  noDiv.onclick = () => { activeCat = NO_LABEL; renderAll(); };
+  sl.appendChild(noDiv);
+}
+
+function renderFilterBar() {
+  const fb = document.getElementById('filterBar');
+  fb.innerHTML = '';
+  // 列出所有非 NO_LABEL 标签 + 当前 activeCat 涉及的所有标签
+  const ls = new Set();
+  if (activeCat === NO_LABEL) {
+    // 显示所有标签
+    for (const l of FLAT_LABELS) ls.add(l);
+  } else {
+    // 显示当前分类相关 + 用户已打的
+    for (const c of CARDS) {
+      for (const l of (LABELS[c.id] || [])) ls.add(l);
+    }
+  }
+  for (const l of [...ls].sort()) {
+    const t = document.createElement('div');
+    t.className = 'filter-tag' + (activeFilters.has(l) ? ' on' : '');
+    t.textContent = l;
+    t.onclick = () => {
+      if (activeFilters.has(l)) activeFilters.delete(l);
+      else activeFilters.add(l);
+      renderFilterBar();
+      renderCards();
+    };
+    fb.appendChild(t);
+  }
+}
+
+function renderCards() {
+  const cl = document.getElementById('cardList');
+  cl.innerHTML = '';
+  // 选中的卡片
+  let list = [];
+  if (activeCat === NO_LABEL) {
+    list = CARDS.filter(c => !(LABELS[c.id] || []).length);
+  } else {
+    list = CARDS.filter(c => (LABELS[c.id] || []).includes(activeCat));
+  }
+  // 应用额外筛选
+  if (activeFilters.size) {
+    list = list.filter(c => {
+      const ls = LABELS[c.id] || [];
+      for (const f of activeFilters) if (!ls.includes(f)) return false;
+      return true;
+    });
+  }
+  if (!list.length) {
+    cl.innerHTML = '<div class="empty">（无）</div>';
+    document.getElementById('foot').textContent = '';
+    return;
+  }
+  // 排序按 ts
+  list.sort((a,b) => (a.ts || '').localeCompare(b.ts || ''));
+  for (const c of list) cl.appendChild(buildCard(c));
+  document.getElementById('foot').textContent = `共 ${list.length} 张 / 总 ${CARDS.length} 张`;
+}
+
+function buildCard(c) {
+  const wrap = document.createElement('div');
+  wrap.className = 'card' + (SELECTS[c.id] ? ' selected' : '');
+  wrap.id = 'card-' + c.id;
+  // 头部
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  const ck = document.createElement('input');
+  ck.type = 'checkbox';
+  ck.className = 'card-check';
+  ck.checked = !!SELECTS[c.id];
+  ck.onchange = () => {
+    if (ck.checked) SELECTS[c.id] = true;
+    else delete SELECTS[c.id];
+    saveSelects();
+    wrap.classList.toggle('selected', ck.checked);
+    updateSelCount();
+  };
+  const tm = document.createElement('span');
+  tm.className = 'card-time';
+  tm.textContent = (c.ts || '').replace('T', ' ').replace('Z', '');
+  const idEl = document.createElement('span');
+  idEl.className = 'card-id';
+  idEl.textContent = c.id;
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const cp = document.createElement('button');
+  cp.className = 'card-collapse';
+  cp.textContent = '折叠';
+  cp.onclick = () => {
+    wrap.classList.toggle('collapsed');
+    cp.textContent = wrap.classList.contains('collapsed') ? '展开' : '折叠';
+  };
+  actions.appendChild(cp);
+  // 定位按钮
+  const jb = document.createElement('button');
+  jb.className = 'card-collapse';
+  jb.textContent = '↗ 定位';
+  jb.title = '跳转到完整对话流';
+  jb.onclick = () => { jumpToFullFlow(c.id); };
+  actions.appendChild(jb);
+  head.appendChild(ck);
+  head.appendChild(tm);
+  head.appendChild(idEl);
+  head.appendChild(actions);
+  wrap.appendChild(head);
+  // user
+  if (c.user) {
+    const u = document.createElement('div');
+    u.className = 'bubble user';
+    u.innerHTML = `<div class="role">user</div><div class="text">${md(c.user)}</div>`;
+    wrap.appendChild(u);
+  }
+  // assistant
+  if (c.assistant) {
+    const a = document.createElement('div');
+    a.className = 'bubble assistant';
+    a.innerHTML = `<div class="role">ai</div><div class="text">${md(c.assistant)}</div>`;
+    wrap.appendChild(a);
+  }
+  // 标签区
+  const tags = document.createElement('div');
+  tags.className = 'card-tags';
+  const tl = document.createElement('span');
+  tl.className = 'tag-label';
+  tl.textContent = '打标签：';
+  tags.appendChild(tl);
+  const myLabels = LABELS[c.id] || [];
+  for (const l of FLAT_LABELS) {
+    const t = document.createElement('span');
+    t.className = 'tag' + (myLabels.includes(l) ? ' on' : '');
+    t.textContent = l;
+    t.onclick = () => {
+      const cur = LABELS[c.id] || [];
+      if (cur.includes(l)) LABELS[c.id] = cur.filter(x => x !== l);
+      else LABELS[c.id] = [...cur, l];
+      if (!LABELS[c.id].length) delete LABELS[c.id];
+      saveLabels();
+      renderAll();
+    };
+    tags.appendChild(t);
+  }
+  // 其他标签（已打但不在当前筛选）
+  const otherTags = myLabels.filter(l => l !== activeCat);
+  if (otherTags.length) {
+    const sp = document.createElement('span');
+    sp.className = 'tag-label';
+    sp.style.marginLeft = '10px';
+    sp.textContent = '还属于：';
+    tags.appendChild(sp);
+    for (const o of otherTags) {
+      const t = document.createElement('span');
+      t.className = 'tag-static';
+      t.textContent = o;
+      t.onclick = () => { activeCat = o; renderAll(); };
+      tags.appendChild(t);
+    }
+  }
+  wrap.appendChild(tags);
+  return wrap;
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function md(s) {
+  if (!s) return '';
+  s = esc(s);
+  // 保护 code block
+  const codes = [];
+  s = s.replace(/```([\s\S]*?)```/g, (m, c) => { codes.push(c); return '\x00C' + (codes.length-1) + '\x00'; });
+  // 保护 inline code
+  const inlines = [];
+  s = s.replace(/`([^`\n]+)`/g, (m, c) => { inlines.push(c); return '\x00I' + (inlines.length-1) + '\x00'; });
+  // 块级
+  const lines = s.split('\n');
+  const out = [];
+  let para = [];
+  const flush = () => { if (para.length) { out.push('<p>' + para.join(' ') + '</p>'); para = []; } };
+  for (const line of lines) {
+    let m;
+    if (line.trim() === '') { flush(); continue; }
+    if (m = line.match(/^###\s+(.+)$/)) { flush(); out.push('<h3>'+m[1]+'</h3>'); continue; }
+    if (m = line.match(/^##\s+(.+)$/)) { flush(); out.push('<h2>'+m[1]+'</h2>'); continue; }
+    if (m = line.match(/^#\s+(.+)$/)) { flush(); out.push('<h1>'+m[1]+'</h1>'); continue; }
+    if (m = line.match(/^>\s*(.*)$/)) { flush(); out.push('<blockquote>'+m[1]+'</blockquote>'); continue; }
+    if (m = line.match(/^[\-\*]\s+(.+)$/)) { flush(); out.push('<ul><li>'+m[1]+'</li></ul>'); continue; }
+    para.push(line);
+  }
+  flush();
+  let html = out.join('\n');
+  // 行内
+  html = html.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(^|[^*\n])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+  html = html.replace(/~~([^~\n]+?)~~/g, '<del>$1</del>');
+  html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  // 还原 code
+  html = html.replace(/\x00C(\d+)\x00/g, (m, i) => '<pre><code>'+codes[+i]+'</code></pre>');
+  html = html.replace(/\x00I(\d+)\x00/g, (m, i) => '<code>'+inlines[+i]+'</code>');
+  return html;
+}
+
+function updateSelCount() {
+  document.getElementById('selCount').textContent = Object.keys(SELECTS).length;
+  document.getElementById('addToCollBtn').style.display = Object.keys(SELECTS).length ? 'inline-block' : 'none';
+}
+
+// === 加入 collection 弹窗 ===
+const STORAGE_COLL = 'chat-collections';
+
+function loadCollections() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_COLL) || '{}'); } catch { return {}; }
+}
+function saveCollections(d) { localStorage.setItem(STORAGE_COLL, JSON.stringify(d)); }
+
+function openAddToCollModal() {
+  const ids = Object.keys(SELECTS);
+  if (!ids.length) return;
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.id = 'addToCollMask';
+  mask.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <h3>把 ${ids.length} 张卡片加入 collection</h3>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <h4>新建 collection</h4>
+          <div class="new-coll-row">
+            <input id="newCollTitle" placeholder="输入标题…" />
+            <button id="newCollBtn">新建并加入</button>
+          </div>
+        </div>
+        <div class="modal-section">
+          <h4>已有 collection（可多选）</h4>
+          <div class="coll-list" id="collList"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div class="info" id="modalInfo">已选 0 个目标</div>
+        <button class="btn-primary" id="confirmCollBtn" disabled>确认加入</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+
+  // 关闭
+  const close = () => mask.remove();
+  document.getElementById('modalClose').onclick = close;
+  mask.onclick = close;
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+
+  // 列出 collection
+  const colCol = loadCollections();
+  const collList = document.getElementById('collList');
+  const selTargets = new Set();
+  const updateInfo = () => {
+    document.getElementById('modalInfo').textContent = `已选 ${selTargets.size} 个目标 / 共 ${ids.length} 张卡片`;
+    document.getElementById('confirmCollBtn').disabled = selTargets.size === 0;
+  };
+  const sorted = Object.values(colCol).sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  if (sorted.length === 0) {
+    collList.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0;">（还没有 collection）</div>';
+  } else {
+    for (const c of sorted) {
+      const it = document.createElement('div');
+      it.className = 'coll-item';
+      it.innerHTML = `<span class="coll-title">${esc(c.title)}</span><span class="coll-n">${(c.card_ids || []).length} 张</span>`;
+      it.onclick = () => {
+        if (selTargets.has(c.id)) { selTargets.delete(c.id); it.classList.remove('on'); }
+        else { selTargets.add(c.id); it.classList.add('on'); }
+        updateInfo();
+      };
+      collList.appendChild(it);
+    }
+  }
+  updateInfo();
+
+  // 新建并加入
+  const newTitle = document.getElementById('newCollTitle');
+  const newBtn = document.getElementById('newCollBtn');
+  const doCreate = () => {
+    const t = newTitle.value.trim();
+    if (!t) { newTitle.focus(); return; }
+    const cid = 'col_' + Date.now();
+    colCol[cid] = { id: cid, title: t, note: '', card_ids: [...ids], created_at: new Date().toISOString() };
+    saveCollections(colCol);
+    close();
+    showToast(`已创建并加入 ${ids.length} 张卡片`);
+    // 清空勾选
+    SELECTS = {};
+    saveSelects();
+    updateSelCount();
+    renderCards();
+  };
+  newBtn.onclick = doCreate;
+  newTitle.onkeydown = (e) => { if (e.key === 'Enter') doCreate(); };
+
+  // 确认加入
+  document.getElementById('confirmCollBtn').onclick = () => {
+    const colCol2 = loadCollections();
+    let total = 0;
+    for (const cid of selTargets) {
+      const c = colCol2[cid];
+      if (!c) continue;
+      const cur = new Set(c.card_ids || []);
+      for (const id of ids) cur.add(id);
+      c.card_ids = [...cur];
+      total += 1;
+    }
+    saveCollections(colCol2);
+    close();
+    showToast(`已加入 ${selTargets.size} 个 collection`);
+    SELECTS = {};
+    saveSelects();
+    updateSelCount();
+    renderCards();
+  };
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast show';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
+}
+
+function jumpToFullFlow(cardId) {
+  // 跳到 conversation 完整对话流，URL 带 #msg-<card_id>
+  window.location.href = `conversation.html#msg-${cardId}`;
+}
+
+document.getElementById('addToCollBtn').onclick = openAddToCollModal;
+
+function renderAll() {
+  renderSidebar();
+  renderFilterBar();
+  renderCards();
+  updateSelCount();
+  document.getElementById('totalCount').textContent = CARDS.length;
+}
+
+async function init() {
+  loadStorage();
+  try {
+    const r = await fetch('02-cards.json');
+    const d = await r.json();
+    CARDS = d.cards || [];
+    ORPHANS = d.orphan_assistants || [];
+  } catch (e) {
+    document.getElementById('cardList').innerHTML = `<div class="empty">无法加载 02-cards.json：${e.message}<br>请用 <code>05-serve.py</code> 启动 http server</div>`;
+    return;
+  }
+  // 如果有 04-labeled.json，合并进 LABELS（优先级 localStorage > 04）
+  try {
+    const r3 = await fetch('04-labeled.json');
+    if (r3.ok) {
+      const d3 = await r3.json();
+      const from3 = {};
+      for (const c of d3.cards || []) {
+        if (c.labels && c.labels.length) from3[c.id] = c.labels;
+      }
+      for (const k of Object.keys(from3)) {
+        if (!LABELS[k]) LABELS[k] = from3[k];
+      }
+    }
+  } catch {}
+  // 也读 03-batch-*.json（增量批次的 LLM 标签）
+  for (let i = 1; i <= 100; i++) {
+    try {
+      const rb = await fetch(`03-batch-${i}.json`);
+      if (!rb.ok) break;
+      const db = await rb.json();
+      // 取所有 value
+      for (const v of Object.values(db)) {
+        for (const [cid, ls] of Object.entries(v)) {
+          if (ls && ls.length && !LABELS[cid]) LABELS[cid] = ls;
+        }
+      }
+    } catch { break; }
+  }
+  saveLabels();
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>

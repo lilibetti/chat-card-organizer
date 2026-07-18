@@ -1,0 +1,38 @@
+# --- Data ---
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# --- Generated / personal data ---
+# 02-cards.json and 04-labeled.json contain your real conversations.
+# Keep these out of the repo; regenerate locally with the pipeline.
+02-cards.json
+04-labeled.json
+03-batch-*.json
+
+# --- Backups / archives ---
+*.zip
+*.tar.gz
+*.7z
+
+# --- Reference / third-party sources ---
+reference/
+_external/
+vendor/
+
+# --- Editor / OS junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.pyc
+__pycache__/
+
+# --- Local state ---
+.env
+.env.local
+*.local

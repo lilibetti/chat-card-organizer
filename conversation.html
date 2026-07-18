@@ -1,0 +1,543 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>完整对话流</title>
+<style>
+  :root { --bg:#fafaf8; --ink:#1a1a1a; --muted:#888; --line:#e6e3dd; --acc:#c8472a; --hl:#fff3a8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft Yahei",sans-serif; color:var(--ink); background:var(--bg); }
+  header { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 20px; display:flex; align-items:center; gap:12px; z-index:10; flex-wrap:wrap; }
+  header h1 { font-size:14px; font-weight:400; margin:0; letter-spacing:1px; }
+  .top-stat { color:var(--muted); font-size:12px; padding:4px 8px; }
+  .top-stat b { color:var(--ink); font-weight:500; }
+  .top-spacer { flex:1; }
+  a.btn { display:inline-block; padding:5px 12px; border:1px solid var(--ink); text-decoration:none; color:var(--ink); font-size:12px; }
+  a.btn:hover { background:var(--ink); color:var(--bg); }
+  button.btn { padding:5px 12px; border:1px solid var(--ink); text-decoration:none; color:var(--ink); font-size:12px; background:var(--bg); font-family:inherit; cursor:pointer; }
+  button.btn:hover { background:var(--ink); color:var(--bg); }
+  input.txt { padding:5px 10px; border:1px solid var(--ink); background:var(--bg); font:inherit; color:var(--ink); }
+  input.txt:focus { outline:2px solid var(--ink); outline-offset:-1px; }
+
+  main { max-width:800px; margin:0 auto; padding:20px 28px; }
+  .day-head { color:var(--muted); font-size:11px; padding:18px 0 8px; border-bottom:1px solid var(--line); margin-top:20px; font-family:monospace; letter-spacing:1px; }
+  .day-head:first-of-type { margin-top:0; }
+
+  .msg { background:#fff; border:1px solid var(--line); padding:14px 18px; margin-bottom:10px; border-left-width:3px; }
+  .msg.user { border-left-color:var(--acc); }
+  .msg.assistant { border-left-color:#aaa; }
+  .msg.orphan { border-left-color:#666; background:#f5f3ee; }
+  .msg.selected { border-color:var(--acc); box-shadow:0 0 0 2px rgba(200,71,42,0.08); }
+  .msg-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .msg-check { width:16px; height:16px; cursor:pointer; margin-right:4px; }
+  .msg-role { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+  .msg.user .msg-role { color:var(--acc); }
+  .msg-ts { font-size:11px; color:var(--muted); font-family:monospace; }
+  .msg-id { font-size:10px; color:#ccc; font-family:monospace; margin-left:auto; }
+  .msg-text { white-space:pre-wrap; word-wrap:break-word; line-height:1.7; }
+  .msg.match { background:var(--hl); }
+  .msg.highlight { animation:hl 2s ease-out; }
+  @keyframes hl { 0% { background:var(--hl); } 100% { background:transparent; } }
+
+  .sentinel { padding:20px; text-align:center; color:var(--muted); font-size:12px; }
+  .sentinel.done { color:var(--acc); }
+  .empty { color:var(--muted); padding:60px 0; text-align:center; font-size:13px; }
+
+  .search-wrap { position:relative; }
+  .search-wrap input { width:200px; }
+  .clear-x { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; display:none; }
+  .clear-x.show { display:block; }
+
+  /* Modal（与 browse 一致） */
+  .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,0.3); z-index:100; display:flex; align-items:center; justify-content:center; }
+  .modal { background:var(--bg); border:1px solid var(--ink); width:520px; max-width:90vw; max-height:80vh; display:flex; flex-direction:column; }
+  .modal-head { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; }
+  .modal-head h3 { margin:0; font-size:14px; font-weight:500; flex:1; }
+  .modal-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted); padding:0 4px; }
+  .modal-close:hover { color:var(--ink); }
+  .modal-body { padding:16px 18px; overflow-y:auto; flex:1; }
+  .modal-section { margin-bottom:18px; }
+  .modal-section h4 { font-size:11px; color:var(--muted); margin:0 0 8px; text-transform:uppercase; letter-spacing:1px; font-weight:500; }
+  .new-coll-row { display:flex; gap:6px; }
+  .new-coll-row input { flex:1; padding:6px 10px; border:1px solid var(--ink); background:var(--bg); font:inherit; color:var(--ink); }
+  .new-coll-row button { padding:6px 12px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; cursor:pointer; }
+  .new-coll-row button:hover { background:#000; }
+  .coll-list { display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto; }
+  .coll-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border:1px solid var(--line); cursor:pointer; }
+  .coll-item:hover { border-color:var(--ink); }
+  .coll-item.on { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .coll-item .coll-title { flex:1; font-size:13px; }
+  .coll-item .coll-n { font-size:11px; color:var(--muted); }
+  .coll-item.on .coll-n { color:#aaa; }
+  .modal-foot { padding:12px 18px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+  .modal-foot .info { flex:1; font-size:12px; color:var(--muted); }
+  .btn-primary { padding:6px 14px; border:1px solid var(--ink); background:var(--ink); color:var(--bg); font:inherit; cursor:pointer; }
+  .btn-primary:hover { background:#000; }
+  .btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+
+  /* Toast */
+  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 20px; font-size:13px; z-index:200; opacity:0; transition:opacity .2s; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>完整对话流</h1>
+  <div class="top-stat">已加载 <b id="loadedN">0</b> / <b id="totalN">0</b></div>
+  <input class="txt" id="jumpIn" placeholder="跳转到 prompt_id…" style="width:200px;" />
+  <div class="search-wrap">
+    <input class="txt" id="searchIn" placeholder="搜索关键词…" />
+    <button class="clear-x" id="searchClear" title="清空">×</button>
+  </div>
+  <div class="top-spacer"></div>
+  <div class="top-stat">已选中 <b id="selCount">0</b></div>
+  <button class="btn" id="addToCollBtn" style="display:none">+ 加入 collection</button>
+  <a class="btn" href="collections.html">collection</a>
+  <a class="btn" href="browse.html">← 按主题</a>
+</header>
+
+<main>
+  <div id="dayHeads"></div>
+  <div id="msgList"></div>
+  <div class="sentinel" id="sentinel">滚动加载更多…</div>
+  <div class="empty" id="empty" style="display:none">（无）</div>
+</main>
+
+<script>
+const BATCH = 50;
+let ALL_MSGS = [];   // 全部消息
+let LOADED = 0;
+let SEARCH_HITS = null;  // null = 不搜索；Set = 只显示命中的
+let DAY_LAST = null;
+let DAY_HEADS_EL = document.getElementById('dayHeads');
+let LIST_EL = document.getElementById('msgList');
+let SENTINEL_EL = document.getElementById('sentinel');
+
+// 勾选状态（与 browse 共享 localStorage key）
+let SELECTS = {};
+const STORAGE_SELECTS = 'chat-card-selects';
+const STORAGE_COLL = 'chat-collections';
+
+// 决定本次加载时 SELECTS 的初始值：
+// - 新 tab / 新会话：清零（用 sessionStorage 做 tab 标记，关闭 tab 后该标记消失）
+// - 同 tab 内刷新：清零（用 Performance API 的 navigation.type 区分）
+// - 同 tab 内从另一页面导航过来：保留（实现两个页面共享一份勾选）
+function _initSelects() {
+  const SESSION_KEY = 'chat-tab-session';
+  const isNewTab = !sessionStorage.getItem(SESSION_KEY);
+  if (isNewTab) {
+    sessionStorage.setItem(SESSION_KEY, '1');
+    localStorage.removeItem(STORAGE_SELECTS);
+    return {};
+  }
+  const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0])
+            || (performance.navigation ? { type: performance.navigation.type === 1 ? 'reload' : 'navigate' } : null);
+  const isReload = nav && nav.type === 'reload';
+  if (isReload) {
+    localStorage.removeItem(STORAGE_SELECTS);
+    return {};
+  }
+  try { return JSON.parse(localStorage.getItem(STORAGE_SELECTS) || '{}'); }
+  catch { return {}; }
+}
+function loadSelects() { SELECTS = _initSelects(); }
+function saveSelects() { localStorage.setItem(STORAGE_SELECTS, JSON.stringify(SELECTS)); }
+function loadCollections() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_COLL) || '{}'); } catch { return {}; }
+}
+function saveCollections(d) { localStorage.setItem(STORAGE_COLL, JSON.stringify(d)); }
+
+function esc(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function md(s) {
+  if (!s) return '';
+  s = esc(s);
+  const codes = [];
+  s = s.replace(/```([\s\S]*?)```/g, (m, c) => { codes.push(c); return '\x00C' + (codes.length-1) + '\x00'; });
+  const inlines = [];
+  s = s.replace(/`([^`\n]+)`/g, (m, c) => { inlines.push(c); return '\x00I' + (inlines.length-1) + '\x00'; });
+  const lines = s.split('\n');
+  const out = [];
+  let para = [];
+  const flush = () => { if (para.length) { out.push('<p>' + para.join(' ') + '</p>'); para = []; } };
+  for (const line of lines) {
+    let m;
+    if (line.trim() === '') { flush(); continue; }
+    if (m = line.match(/^###\s+(.+)$/)) { flush(); out.push('<h3>'+m[1]+'</h3>'); continue; }
+    if (m = line.match(/^##\s+(.+)$/)) { flush(); out.push('<h2>'+m[1]+'</h2>'); continue; }
+    if (m = line.match(/^#\s+(.+)$/)) { flush(); out.push('<h1>'+m[1]+'</h1>'); continue; }
+    if (m = line.match(/^>\s*(.*)$/)) { flush(); out.push('<blockquote>'+m[1]+'</blockquote>'); continue; }
+    if (m = line.match(/^[\-\*]\s+(.+)$/)) { flush(); out.push('<ul><li>'+m[1]+'</li></ul>'); continue; }
+    para.push(line);
+  }
+  flush();
+  let html = out.join('\n');
+  html = html.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(^|[^*\n])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+  html = html.replace(/~~([^~\n]+?)~~/g, '<del>$1</del>');
+  html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  html = html.replace(/\x00C(\d+)\x00/g, (m, i) => '<pre><code>'+codes[+i]+'</code></pre>');
+  html = html.replace(/\x00I(\d+)\x00/g, (m, i) => '<code>'+inlines[+i]+'</code>');
+  return html;
+}
+
+function dayKey(ts) {
+  if (!ts) return 'unknown';
+  return ts.slice(0, 10);
+}
+
+// 构建一条 user 消息的 DOM（抽出复用）
+function buildUserMsg(m) {
+  const div = document.createElement('div');
+  div.className = 'msg user' + (SELECTS[m.id] ? ' selected' : '');
+  div.id = 'msg-' + m.id;
+  div.dataset.promptId = m.id;
+  const head = document.createElement('div');
+  head.className = 'msg-head';
+  const ck = document.createElement('input');
+  ck.type = 'checkbox';
+  ck.className = 'msg-check';
+  ck.checked = !!SELECTS[m.id];
+  ck.onchange = () => {
+    if (ck.checked) SELECTS[m.id] = true;
+    else delete SELECTS[m.id];
+    saveSelects();
+    div.classList.toggle('selected', ck.checked);
+    updateSelCount();
+  };
+  head.appendChild(ck);
+  const role = document.createElement('span');
+  role.className = 'msg-role';
+  role.textContent = 'user';
+  head.appendChild(role);
+  const ts = document.createElement('span');
+  ts.className = 'msg-ts';
+  ts.textContent = (m.ts || '').replace('T', ' ');
+  head.appendChild(ts);
+  const idEl = document.createElement('span');
+  idEl.className = 'msg-id';
+  idEl.textContent = m.id;
+  head.appendChild(idEl);
+  div.appendChild(head);
+  const text = document.createElement('div');
+  text.className = 'msg-text';
+  text.innerHTML = md(m.content);
+  div.appendChild(text);
+  return div;
+}
+
+function buildAssistantMsg(m) {
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.id = 'msg-' + m.id;
+  div.dataset.promptId = m.id;
+  const head = document.createElement('div');
+  head.className = 'msg-head';
+  const role = document.createElement('span');
+  role.className = 'msg-role';
+  role.textContent = 'ai';
+  head.appendChild(role);
+  const ts = document.createElement('span');
+  ts.className = 'msg-ts';
+  ts.textContent = (m.ts || '').replace('T', ' ');
+  head.appendChild(ts);
+  const idEl = document.createElement('span');
+  idEl.className = 'msg-id';
+  idEl.textContent = m.id;
+  head.appendChild(idEl);
+  div.appendChild(head);
+  const text = document.createElement('div');
+  text.className = 'msg-text';
+  text.innerHTML = md(m.content);
+  div.appendChild(text);
+  return div;
+}
+
+function appendMsg(frag, m) {
+  const dk = dayKey(m.ts);
+  if (dk !== DAY_LAST) {
+    const dh = document.createElement('div');
+    dh.className = 'day-head';
+    dh.textContent = dk;
+    frag.appendChild(dh);
+    DAY_LAST = dk;
+  }
+  frag.appendChild(m.role === 'user' ? buildUserMsg(m) : buildAssistantMsg(m));
+}
+
+function buildMsgFlow(cards) {
+  const out = [];
+  for (const c of cards) {
+    if (c.user) out.push({ id: c.id, role: 'user', ts: c.ts, content: c.user });
+    if (c.assistant) out.push({ id: c.id, role: 'assistant', ts: c.ts, content: c.assistant });
+  }
+  out.sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
+  return out;
+}
+
+function renderBatch() {
+  if (LOADED >= ALL_MSGS.length) {
+    SENTINEL_EL.textContent = '✓ 已全部加载';
+    SENTINEL_EL.classList.add('done');
+    return;
+  }
+  const next = Math.min(LOADED + BATCH, ALL_MSGS.length);
+  const frag = document.createDocumentFragment();
+  for (let i = LOADED; i < next; i++) {
+    const m = ALL_MSGS[i];
+    if (SEARCH_HITS !== null && !SEARCH_HITS.has(i)) continue;
+    appendMsg(frag, m);
+  }
+  LIST_EL.appendChild(frag);
+  LOADED = next;
+  document.getElementById('loadedN').textContent = LIST_EL.querySelectorAll('.msg').length;
+}
+
+function jumpToHash() {
+  const h = location.hash.replace(/^#/, '');
+  if (!h) return;
+  const m = h.match(/^msg-(.+)$/);
+  if (!m) return;
+  const targetId = m[1];
+  const targetIdx = ALL_MSGS.findIndex(m => m.id === targetId);
+  if (targetIdx === -1) return;
+  const need = targetIdx + 30;
+  if (LOADED < need) {
+    LIST_EL.innerHTML = '';
+    DAY_LAST = null;
+    const savedLoaded = need;
+    LOADED = 0;
+    while (LOADED < savedLoaded) {
+      const frag = document.createDocumentFragment();
+      const next = Math.min(LOADED + BATCH, savedLoaded);
+      for (let i = LOADED; i < next; i++) {
+        const m = ALL_MSGS[i];
+        if (SEARCH_HITS !== null && !SEARCH_HITS.has(i)) continue;
+        appendMsg(frag, m);
+      }
+      LIST_EL.appendChild(frag);
+      LOADED = next;
+    }
+  }
+  document.getElementById('loadedN').textContent = LIST_EL.querySelectorAll('.msg').length;
+  setTimeout(() => {
+    const el = document.getElementById('msg-' + targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('highlight');
+      setTimeout(() => el.classList.remove('highlight'), 2500);
+    }
+  }, 100);
+}
+
+function doSearch(q) {
+  q = (q || '').trim().toLowerCase();
+  if (!q) {
+    SEARCH_HITS = null;
+    document.getElementById('searchClear').classList.remove('show');
+  } else {
+    SEARCH_HITS = new Set();
+    for (let i = 0; i < ALL_MSGS.length; i++) {
+      if ((ALL_MSGS[i].content || '').toLowerCase().includes(q)) SEARCH_HITS.add(i);
+    }
+    document.getElementById('searchClear').classList.add('show');
+  }
+  LIST_EL.innerHTML = '';
+  DAY_LAST = null;
+  LOADED = 0;
+  if (SEARCH_HITS !== null) {
+    const target = ALL_MSGS.length;
+    while (LOADED < target) {
+      const frag = document.createDocumentFragment();
+      const next = Math.min(LOADED + 200, target);
+      for (let i = LOADED; i < next; i++) {
+        if (!SEARCH_HITS.has(i)) continue;
+        const m = ALL_MSGS[i];
+        appendMsg(frag, m);
+      }
+      LIST_EL.appendChild(frag);
+      LOADED = next;
+    }
+    SENTINEL_EL.textContent = `✓ 搜索结果 ${SEARCH_HITS.size} 条`;
+    SENTINEL_EL.classList.add('done');
+    document.getElementById('loadedN').textContent = LIST_EL.querySelectorAll('.msg').length;
+  } else {
+    renderBatch();
+  }
+  window.scrollTo(0, 0);
+}
+
+function setupObserver() {
+  const obs = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) renderBatch();
+    }
+  }, { rootMargin: '200px' });
+  obs.observe(SENTINEL_EL);
+}
+
+function updateSelCount() {
+  document.getElementById('selCount').textContent = Object.keys(SELECTS).length;
+  document.getElementById('addToCollBtn').style.display = Object.keys(SELECTS).length ? 'inline-block' : 'none';
+}
+
+// === 加入 collection 弹窗（与 browse 一致） ===
+function openAddToCollModal() {
+  const ids = Object.keys(SELECTS);
+  if (!ids.length) return;
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.id = 'addToCollMask';
+  mask.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <h3>把 ${ids.length} 张卡片加入 collection</h3>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <h4>新建 collection</h4>
+          <div class="new-coll-row">
+            <input id="newCollTitle" placeholder="输入标题…" />
+            <button id="newCollBtn">新建并加入</button>
+          </div>
+        </div>
+        <div class="modal-section">
+          <h4>已有 collection（可多选）</h4>
+          <div class="coll-list" id="collList"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div class="info" id="modalInfo">已选 0 个目标</div>
+        <button class="btn-primary" id="confirmCollBtn" disabled>确认加入</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+
+  const close = () => mask.remove();
+  document.getElementById('modalClose').onclick = close;
+  mask.onclick = close;
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+
+  const colCol = loadCollections();
+  const collList = document.getElementById('collList');
+  const selTargets = new Set();
+  const updateInfo = () => {
+    document.getElementById('modalInfo').textContent = `已选 ${selTargets.size} 个目标 / 共 ${ids.length} 张卡片`;
+    document.getElementById('confirmCollBtn').disabled = selTargets.size === 0;
+  };
+  const sorted = Object.values(colCol).sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  if (sorted.length === 0) {
+    collList.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0;">（还没有 collection）</div>';
+  } else {
+    for (const c of sorted) {
+      const it = document.createElement('div');
+      it.className = 'coll-item';
+      it.innerHTML = `<span class="coll-title">${esc(c.title)}</span><span class="coll-n">${(c.card_ids || []).length} 张</span>`;
+      it.onclick = () => {
+        if (selTargets.has(c.id)) { selTargets.delete(c.id); it.classList.remove('on'); }
+        else { selTargets.add(c.id); it.classList.add('on'); }
+        updateInfo();
+      };
+      collList.appendChild(it);
+    }
+  }
+  updateInfo();
+
+  const newTitle = document.getElementById('newCollTitle');
+  const newBtn = document.getElementById('newCollBtn');
+  const doCreate = () => {
+    const t = newTitle.value.trim();
+    if (!t) { newTitle.focus(); return; }
+    const cid = 'col_' + Date.now();
+    colCol[cid] = { id: cid, title: t, note: '', card_ids: [...ids], created_at: new Date().toISOString() };
+    saveCollections(colCol);
+    close();
+    showToast(`已创建并加入 ${ids.length} 张卡片`);
+    SELECTS = {};
+    saveSelects();
+    updateSelCount();
+    // 重渲 user 消息以清掉 selected 样式
+    document.querySelectorAll('.msg.user.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.msg-check').forEach(el => el.checked = false);
+  };
+  newBtn.onclick = doCreate;
+  newTitle.onkeydown = (e) => { if (e.key === 'Enter') doCreate(); };
+
+  document.getElementById('confirmCollBtn').onclick = () => {
+    const colCol2 = loadCollections();
+    let total = 0;
+    for (const cid of selTargets) {
+      const c = colCol2[cid];
+      if (!c) continue;
+      const cur = new Set(c.card_ids || []);
+      for (const id of ids) cur.add(id);
+      c.card_ids = [...cur];
+      total += 1;
+    }
+    saveCollections(colCol2);
+    close();
+    showToast(`已加入 ${selTargets.size} 个 collection`);
+    SELECTS = {};
+    saveSelects();
+    updateSelCount();
+    document.querySelectorAll('.msg.user.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.msg-check').forEach(el => el.checked = false);
+  };
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast show';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
+}
+
+document.getElementById('addToCollBtn').onclick = openAddToCollModal;
+
+async function init() {
+  loadSelects();
+  try {
+    const r = await fetch('02-cards.json');
+    const d = await r.json();
+    ALL_MSGS = buildMsgFlow(d.cards || []);
+  } catch (e) {
+    LIST_EL.innerHTML = `<div class="empty">无法加载 02-cards.json：${e.message}<br>请用 <code>05-serve.py</code> 启动 http server</div>`;
+    return;
+  }
+  document.getElementById('totalN').textContent = ALL_MSGS.length;
+  renderBatch();
+  setupObserver();
+  updateSelCount();
+
+  let searchTimer = null;
+  document.getElementById('searchIn').oninput = (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => doSearch(e.target.value), 200);
+  };
+  document.getElementById('searchClear').onclick = () => {
+    document.getElementById('searchIn').value = '';
+    doSearch('');
+  };
+
+  document.getElementById('jumpIn').onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      const v = e.target.value.trim();
+      if (v) location.hash = 'msg-' + v;
+    }
+  };
+
+  jumpToHash();
+  window.addEventListener('hashchange', jumpToHash);
+}
+init();
+</script>
+</body>
+</html>
